@@ -1,11 +1,15 @@
 {
   "$schema": "https://opencode.ai/config.json",
+  "plugin": [
+    "~/.config/opencode/plugins/atomcode-auth.js"
+  ],
   "provider": {
     "atomgit": {
       "npm": "@ai-sdk/openai-compatible",
-      "name": "AtomGit (via AtomCode CodingPlan)",
+      "name": "AtomGit (via AtomCode)",
       "options": {
-        "baseURL": "http://127.0.0.1:9457/v1"
+        "baseURL": "https://llm-api.atomgit.com/v1",
+        "apiKey": "dummy"
       },
       "models": {
         "deepseek-v4-flash": { "name": "DeepSeek V4 Flash" },
