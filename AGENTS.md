@@ -13,8 +13,10 @@
 |---|---|
 | `proxy.js` | 独立代理（CommonJS，零依赖）。入口：`node proxy.js` |
 | `plugin/index.js` | OpenCode 插件（ESM）。安装到 `~/.config/opencode/plugins/atomcode-auth.js` |
+| `plugin/tui-usage.tsx` | OpenCode TUI 插件 — 在侧边栏显示实时用量面板 |
 | `opencode-config.json` | 配置片段 — 合并到用户的 `~/.config/opencode/opencode.json` |
 | `bin/atomgit-proxy` | Bash 生命周期脚本：`start\|stop\|restart\|status` |
+| `bin/atomgit-usage` | CLI 用量查询脚本（零依赖 Node.js） |
 | `docs/atomcode-integration-notes.md` | AtomCode 认证的完整逆向分析笔记 |
 
 ## 常用命令
@@ -27,9 +29,16 @@ node proxy.js                           # 前台运行
 ./bin/atomgit-proxy status
 curl http://127.0.0.1:9457/v1/models    # 验证
 
+# 用量查询
+node bin/atomgit-usage                   # CLI 查询用量
+curl http://127.0.0.1:9457/v1/usage      # 通过代理查询
+
 # 插件模式 — 复制到全局插件目录：
 cp plugin/index.js ~/.config/opencode/plugins/atomcode-auth.js
 # 然后将 opencode-config.json 中的 plugin 引用和 provider 配置合并到 ~/.config/opencode/opencode.json
+
+# TUI 面板 — 在 ~/.config/opencode/tui.jsonc 的 plugin 数组中加入：
+#   "/home/koteiru/code/atomgit-opencode-bridge/plugin/tui-usage.tsx"
 ```
 
 ## 架构

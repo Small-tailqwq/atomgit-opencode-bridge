@@ -18,6 +18,8 @@ const KNOWN_MODELS = [
   { id: 'Qwen/Qwen3-VL-8B-Instruct', object: 'model', owned_by: 'atomgit' },
 ];
 
+const STATUS_API = 'https://api.gitcode.com/api/v5/coding-plan/status-v2';
+
 let proxyServer = null;
 let proxyStarted = false;
 
@@ -92,6 +94,15 @@ function checkApiKey(req) {
   return req.headers['x-api-key'] === LOCAL_API_KEY;
 }
 
+async function fetchUsage() {
+  const token = await ensureValidToken();
+  const res = await fetch(STATUS_API, {
+    headers: { 'Authorization': 'Bearer ' + token, 'User-Agent': UA_STRING },
+  });
+  if (!res.ok) throw new Error('HTTP ' + res.status);
+  return res.json();
+}
+
 function startProxy() {
   const server = http.createServer((req, res) => {
     if (!checkApiKey(req)) {
@@ -103,6 +114,17 @@ function startProxy() {
     if (req.url === '/v1/models' && req.method === 'GET') {
       res.writeHead(200, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ object: 'list', data: KNOWN_MODELS }));
+      return;
+    }
+
+    if (req.url === '/v1/usage' && req.method === 'GET') {
+      fetchUsage().then(data => {
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify(data));
+      }).catch(e => {
+        res.writeHead(502, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: e.message }));
+      });
       return;
     }
 
@@ -170,8 +192,13 @@ export const AtomCodeAuthPlugin = async () => {
   return {};
 };
 
-process.on('exit', () => {
-  if (proxyServer && proxyServer.listening) { proxyServer.close(); }
-});
-process.on('SIGINT', () => process.exit(0));
-process.on('SIGTERM', () => process.exit(0));
+function cleanup() {
+  if (proxyServer && proxyServer.listening) {
+    proxyServer.close();
+    proxyServer = null;
+    proxyStarted = false;
+  }
+}
+process.on('beforeExit', cleanup);
+process.on('SIGINT', () => { cleanup(); process.exit(0); });
+process.on('SIGTERM', () => { cleanup(); process.exit(0); });

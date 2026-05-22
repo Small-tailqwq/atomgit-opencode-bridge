@@ -24,6 +24,8 @@ const KNOWN_MODELS = [
   { id: 'Qwen/Qwen3-VL-8B-Instruct', object: 'model', owned_by: 'atomgit' },
 ];
 
+const STATUS_API = 'https://api.gitcode.com/api/v5/coding-plan/status-v2';
+
 // ── TOML parser (minimal, for auth.toml only) ──────────────────────────────
 
 function parseAuth(raw) {
@@ -222,6 +224,32 @@ async function proxyToUpstream(method, pathname, body, clientRes) {
 
 // ── HTTP Server ────────────────────────────────────────────────────────────
 
+async function handleUsage(res) {
+  try {
+    const token = await ensureValidToken();
+    const data = await new Promise((resolve, reject) => {
+      const req = https.get(STATUS_API, {
+        headers: { Authorization: 'Bearer ' + token, 'User-Agent': UA_STRING },
+        timeout: 10_000,
+      }, (r) => {
+        let body = '';
+        r.on('data', c => body += c);
+        r.on('end', () => {
+          if (r.statusCode !== 200) return reject(new Error('HTTP ' + r.statusCode));
+          resolve(JSON.parse(body));
+        });
+      });
+      req.on('error', reject);
+      req.on('timeout', () => { req.destroy(); reject(new Error('timeout')); });
+    });
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify(data));
+  } catch (e) {
+    res.writeHead(502, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ error: e.message }));
+  }
+}
+
 const server = http.createServer((req, res) => {
   if (!checkApiKey(req)) {
     res.writeHead(401, { 'Content-Type': 'application/json' });
@@ -232,6 +260,11 @@ const server = http.createServer((req, res) => {
   if (req.url === '/v1/models' && req.method === 'GET') {
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({ object: 'list', data: KNOWN_MODELS }));
+    return;
+  }
+
+  if (req.url === '/v1/usage' && req.method === 'GET') {
+    handleUsage(res);
     return;
   }
 
