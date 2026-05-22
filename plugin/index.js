@@ -8,6 +8,7 @@ const PORT = 9457;
 const AUTH_PATH = join(homedir(), '.atomcode', 'auth.toml');
 const UA_STRING = 'atomcode/4.23.0';
 const UPSTREAM_HOST = 'llm-api.atomgit.com';
+const LOCAL_API_KEY = process.env.LOCAL_API_KEY || null;
 const REFRESH_URL = 'https://acs.atomgit.com/oauth/refresh';
 
 const KNOWN_MODELS = [
@@ -86,10 +87,18 @@ async function ensureValidToken() {
   return newAuth.access_token;
 }
 
+function checkApiKey(req) {
+  if (!LOCAL_API_KEY) return true;
+  return req.headers['x-api-key'] === LOCAL_API_KEY;
+}
+
 function startProxy() {
   const server = http.createServer((req, res) => {
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    if (req.method === 'OPTIONS') { res.writeHead(204); res.end(); return; }
+    if (!checkApiKey(req)) {
+      res.writeHead(401, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'unauthorized', message: 'invalid or missing X-API-Key' }));
+      return;
+    }
 
     if (req.url === '/v1/models' && req.method === 'GET') {
       res.writeHead(200, { 'Content-Type': 'application/json' });
@@ -120,9 +129,7 @@ function startProxy() {
           timeout: 300_000,
         };
         const proxy = https.request(opts, (target) => {
-          const h = {};
-          for (const [k, v] of Object.entries(target.headers)) h[k] = v;
-          res.writeHead(target.statusCode, h);
+          res.writeHead(target.statusCode, target.headers);
           target.pipe(res);
         });
         proxy.on('error', e => {

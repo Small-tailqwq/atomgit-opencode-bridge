@@ -14,6 +14,7 @@ const AUTH_PATH = path.join(
   'auth.toml',
 );
 const UA_STRING = process.env.UA_STRING || 'atomcode/4.23.0';
+const LOCAL_API_KEY = process.env.LOCAL_API_KEY || null;
 const REFRESH_URL = 'https://acs.atomgit.com/oauth/refresh';
 
 const KNOWN_MODELS = [
@@ -157,6 +158,13 @@ async function ensureValidToken() {
   return refreshInProgress;
 }
 
+// ── Optional local API key guard ──────────────────────────────────────────
+
+function checkApiKey(req) {
+  if (!LOCAL_API_KEY) return true;
+  return req.headers['x-api-key'] === LOCAL_API_KEY;
+}
+
 // ── HTTP Proxy Logic ───────────────────────────────────────────────────────
 
 async function proxyToUpstream(method, pathname, body, clientRes) {
@@ -188,11 +196,7 @@ async function proxyToUpstream(method, pathname, body, clientRes) {
   }
 
   const upstreamReq = https.request(opts, (upstreamRes) => {
-    const headers = { 'Access-Control-Allow-Origin': '*' };
-    for (const [k, v] of Object.entries(upstreamRes.headers)) {
-      if (k !== 'access-control-allow-origin') headers[k] = v;
-    }
-    clientRes.writeHead(upstreamRes.statusCode, headers);
+    clientRes.writeHead(upstreamRes.statusCode, upstreamRes.headers);
     upstreamRes.pipe(clientRes);
   });
 
@@ -219,13 +223,9 @@ async function proxyToUpstream(method, pathname, body, clientRes) {
 // ── HTTP Server ────────────────────────────────────────────────────────────
 
 const server = http.createServer((req, res) => {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', '*');
-
-  if (req.method === 'OPTIONS') {
-    res.writeHead(204);
-    res.end();
+  if (!checkApiKey(req)) {
+    res.writeHead(401, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ error: 'unauthorized', message: 'invalid or missing X-API-Key' }));
     return;
   }
 
