@@ -1,0 +1,18 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "provider": {
+    "atomgit": {
+      "npm": "@ai-sdk/openai-compatible",
+      "name": "AtomGit (via AtomCode CodingPlan)",
+      "options": {
+        "baseURL": "http://127.0.0.1:9457/v1"
+      },
+      "models": {
+        "deepseek-v4-flash": { "name": "DeepSeek V4 Flash" },
+        "GLM-5.1": { "name": "GLM-5.1" },
+        "Qwen/Qwen3.6-35B-A3B": { "name": "Qwen3.6-35B-A3B" },
+        "Qwen/Qwen3-VL-8B-Instruct": { "name": "Qwen3-VL-8B (Vision)" }
+      }
+    }
+  }
+}

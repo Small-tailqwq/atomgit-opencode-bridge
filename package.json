@@ -1,0 +1,10 @@
+{
+  "name": "atomgit-opencode-bridge",
+  "version": "1.0.0",
+  "description": "Bridge AtomCode CodingPlan subscription to any OpenAI-compatible client (OpenCode, Cline, etc.)",
+  "main": "proxy.js",
+  "bin": {
+    "atomgit-proxy": "./bin/atomgit-proxy"
+  },
+  "license": "MIT"
+}

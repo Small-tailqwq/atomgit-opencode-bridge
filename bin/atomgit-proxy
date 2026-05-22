@@ -1,0 +1,42 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "$(readlink -f "$0")")/.." && pwd)"
+CMD="${1:-start}"
+
+case "$CMD" in
+  start)
+    pid="$(lsof -ti:9457 2>/dev/null || true)"
+    if [ -n "$pid" ]; then
+      echo "atomgit-proxy already running (PID $pid) on :9457"
+      exit 0
+    fi
+    # Bypass system proxy (Clash etc.) for local proxy connections
+    export http_proxy="" https_proxy="" HTTP_PROXY="" HTTPS_PROXY="" ALL_PROXY=""
+    nohup node "$SCRIPT_DIR/proxy.js" > /tmp/atomgit-bridge.log 2>&1 &
+    echo "atomgit-proxy started (PID $!) on http://127.0.0.1:9457"
+    ;;
+  stop)
+    pid="$(lsof -ti:9457 2>/dev/null || true)"
+    if [ -n "$pid" ]; then
+      kill "$pid" 2>/dev/null && echo "atomgit-proxy stopped" || true
+    else
+      echo "atomgit-proxy not running"
+    fi
+    ;;
+  restart)
+    "$0" stop; sleep 0.5; "$0" start
+    ;;
+  status)
+    pid="$(lsof -ti:9457 2>/dev/null || true)"
+    if [ -n "$pid" ]; then
+      echo "atomgit-proxy running (PID $pid)"
+    else
+      echo "atomgit-proxy not running"
+    fi
+    ;;
+  *)
+    echo "Usage: $0 {start|stop|restart|status}"
+    exit 1
+    ;;
+esac
