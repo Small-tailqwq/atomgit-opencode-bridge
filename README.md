@@ -54,7 +54,8 @@ username = "你的用户名"
 ```
 
 > ⚠️ **`access_token` 就是你的 API Key，约 7 天过期**。
-> 过期后重新运行 `atomcode codingplan` 刷新。
+> **代理已内置自动续命**：token 过期时自动通过 `refresh_token` 刷新并写入 `auth.toml`，
+> 你完全不需要手动处理。只有 `refresh_token` 也失效时才需重新 `atomcode codingplan`。
 
 如果没有这个文件，先登录：
 
@@ -154,12 +155,13 @@ http_proxy="" https_proxy="" node proxy.js
 
 ### Token 过期 / 401
 
-`access_token` 约 7 天过期。刷新：
+`access_token` 约 7 天过期。**代理会在检测到过期时自动用 `refresh_token` 刷新**，
+通常不需要手动干预。
+
+如果 `refresh_token` 也失效了（极少见），重新登录：
 
 ```bash
-atomcode codingplan        # 刷新 token 和模型列表
-# 或
-atomcode login             # 仅刷新登录
+atomcode codingplan
 ```
 
 ### 403 ATOMCODE_UA_REQUIRED
@@ -194,13 +196,26 @@ AtomCode 的官方客户端实现了 HMAC-SHA256 签名算法，生成 5 个 `X-
 实际测试发现 **网关不强制校验这些签名头**，只检查 `User-Agent` 前缀。
 详见仓库内分析文档。
 
+### Token 自动续命 (Auto-Refresh)
+
+很多用户担心 token 7 天过期问题。代理已内置自动续命：
+
+1. 每次请求前检查 `auth.toml` 中的 `created_at + expires_in`
+2. 如果离过期不到 5 分钟，自动调用 `POST https://acs.atomgit.com/oauth/refresh` 
+   带上 `{"refresh_token": "..."}`
+3. 获取新 token 后写入 `auth.toml`，后续请求使用新 token
+4. 刷新异步且去重，高并发下只触发一次刷新请求
+
+只需确保 `auth.toml` 中有 `refresh_token` 字段（`atomcode login` 会自动保存）。
+
 ### 项目结构
 
 ```
 atomgit-opencode-bridge/
-├── proxy.js              # 核心代理服务器
+├── proxy.js              # 核心代理服务器（含自动续命）
 ├── bin/atomgit-proxy     # 启动/停止管理脚本
 ├── opencode-config.json  # OpenCode 配置片段
+├── docs/                 # 逆向分析文档
 ├── package.json          # npm 元数据
 └── README.md             # 本文件
 ```
