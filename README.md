@@ -4,6 +4,20 @@
 
 Bridge AtomCode CodingPlan models to any OpenAI-compatible client.
 
+> **⚠️ 安全警告 / Security Warning**
+>
+> **本项目仅适合在可信网络环境下使用。** 请仔细评估以下安全局限性：
+>
+> 1. **本地通信未加密** — 代理模式下客户端与代理之间的流量是明文的 HTTP（非 HTTPS），localhost 上的其他进程可以嗅探请求内容
+> 2. **凭据明文存储** — `~/.atomcode/auth.toml` 以明文保存 access_token 和 refresh_token，任何能读取该文件的进程均可盗用
+> 3. **默认无访问认证** — 除非设置 `LOCAL_API_KEY`，任何能访问 `127.0.0.1:9457` 的本地进程均可自由使用代理
+> 4. **旁路官方安全模型** — 本项目绕过了 AtomCode 官方的客户端绑定和 UA 校验，本质上属于逆向工程产物
+> 5. **无审计日志** — 代理不记录请求来源、频率和内容，发生滥用时无法追溯
+>
+> **免责声明 / Disclaimer**：本项目仅供学习和研究目的，不隶属于 AtomCode/AtomGit，也不为其官方认可。使用者需自行承担风险，并确保遵守 AtomCode 的《服务条款》。作者不对因使用本项目导致的任何账号封禁、数据泄露或其它损失承担责任。
+>
+> **AI 生成说明**：本项目 100% 由 AI 编写（AtomCode / OpenCode），人类仅提出需求和进行审核。
+
 ## 原理 / How It Works
 
 AtomCode 的 CodingPlan 订阅让你能使用底层模型，但被限制在官方客户端内。
