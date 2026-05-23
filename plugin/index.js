@@ -97,7 +97,7 @@ function checkApiKey(req) {
 async function fetchUsage() {
   const token = await ensureValidToken();
   const res = await fetch(STATUS_API, {
-    headers: { 'Authorization': 'Bearer ' + token, 'User-Agent': UA_STRING },
+    headers: { 'Authorization': 'Bearer ' + token, 'User-Agent': UA_STRING, 'Accept': 'application/json' },
   });
   if (!res.ok) throw new Error('HTTP ' + res.status);
   return res.json();
@@ -142,9 +142,12 @@ function startProxy() {
           port: 443,
           path: '/v1/chat/completions',
           method: 'POST',
+          // Masquerade as real atomcode client - exact header set
           headers: {
             'Authorization': 'Bearer ' + token,
             'User-Agent': UA_STRING,
+            'Accept': '*/*',
+            'Accept-Encoding': 'gzip',
             'Content-Type': 'application/json',
             'Content-Length': body.length,
           },
