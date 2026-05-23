@@ -179,23 +179,28 @@ async function proxyToUpstream(method, pathname, body, clientRes) {
     return;
   }
 
+  // Masquerade as real atomcode client - exact header set atomcode sends
+  const headers = {
+    Authorization: 'Bearer ' + token,
+    'User-Agent': UA_STRING,
+    Accept: '*/*',
+    'Accept-Encoding': 'gzip',
+  };
+
+  if (body) {
+    headers['Content-Type'] = 'application/json';
+    headers['Content-Length'] = body.length;
+  }
+
   const opts = {
     hostname: UPSTREAM_HOST,
     port: 443,
     path: pathname,
     method,
     rejectUnauthorized: true,
-    headers: {
-      Authorization: 'Bearer ' + token,
-      'User-Agent': UA_STRING,
-    },
+    headers,
     timeout: 300_000,
   };
-
-  if (body) {
-    opts.headers['Content-Type'] = 'application/json';
-    opts.headers['Content-Length'] = body.length;
-  }
 
   const upstreamReq = https.request(opts, (upstreamRes) => {
     clientRes.writeHead(upstreamRes.statusCode, upstreamRes.headers);
@@ -229,7 +234,11 @@ async function handleUsage(res) {
     const token = await ensureValidToken();
     const data = await new Promise((resolve, reject) => {
       const req = https.get(STATUS_API, {
-        headers: { Authorization: 'Bearer ' + token, 'User-Agent': UA_STRING },
+        headers: {
+          Authorization: 'Bearer ' + token,
+          'User-Agent': UA_STRING,
+          Accept: 'application/json',
+        },
         timeout: 10_000,
       }, (r) => {
         let body = '';
