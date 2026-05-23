@@ -13,7 +13,8 @@ case "$CMD" in
     fi
     # Bypass system proxy (Clash etc.) for local proxy connections
     export http_proxy="" https_proxy="" HTTP_PROXY="" HTTPS_PROXY="" ALL_PROXY=""
-    nohup node "$SCRIPT_DIR/proxy.js" > /tmp/atomgit-bridge.log 2>&1 &
+    mkdir -p "$SCRIPT_DIR/logs"
+    nohup node "$SCRIPT_DIR/proxy.js" > "$SCRIPT_DIR/logs/atomgit-bridge.log" 2>&1 &
     echo "atomgit-proxy started (PID $!) on http://127.0.0.1:9457"
     ;;
   stop)
