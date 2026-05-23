@@ -8,7 +8,7 @@
       "npm": "@ai-sdk/openai-compatible",
       "name": "AtomGit (via AtomCode)",
       "options": {
-        "baseURL": "https://llm-api.atomgit.com/v1",
+        "baseURL": "http://127.0.0.1:9457/v1",
         "apiKey": "dummy"
       },
       "models": {

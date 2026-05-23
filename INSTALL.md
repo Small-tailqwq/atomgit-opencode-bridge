@@ -65,7 +65,7 @@ cp plugin/index.js ~/.config/opencode/plugins/atomcode-auth.js
       "npm": "@ai-sdk/openai-compatible",
       "name": "AtomGit (via AtomCode)",
       "options": {
-        "baseURL": "https://llm-api.atomgit.com/v1",
+        "baseURL": "http://127.0.0.1:9457/v1",
         "apiKey": "dummy"
       },
       "models": {
@@ -79,7 +79,8 @@ cp plugin/index.js ~/.config/opencode/plugins/atomcode-auth.js
 }
 ```
 
-> **注意**：合并时保留用户原有的 `provider`、`plugin`、`mcp` 等配置，不要覆盖。
+> **注意**：插件模式下 `baseURL` 必须指向插件启动的本地 proxy（`:9457`），请求才会经过插件注入真实 token。
+> 合并时保留用户原有的 `provider`、`plugin`、`mcp` 等配置，不要覆盖。
 
 ### 3.3 重启 OpenCode
 
