@@ -59,6 +59,28 @@ cp plugin/index.js ~/.config/opencode/plugins/atomcode-auth.js
 - **已移除 CORS 头** — 终端/WSL 不需要浏览器跨域。`Access-Control-Allow-Origin: *` 打开了通过浏览器 localhost 进行 CSRF 的攻击面。如果需要浏览器访问（例如 Windows 上 SillyTavern 的 Web UI 通过 WSL 代理），重新加上即可。
 - **可选的 `LOCAL_API_KEY` 环境变量** — 设置 `LOCAL_API_KEY=<secret>` 后，所有请求需要携带 `X-API-Key: <secret>` 头。不设置时行为不变（无认证）。这可以防止本地恶意进程（如流氓 VS Code 插件、被污染的 npm 包）不知道 key 而无法使用你的代理。
 
+## 多机共享 auth.toml（WSL + Windows）
+
+如果 WSL 和 Windows 都用同一个 AtomCode 账号，`refresh_token` 会在任一端刷新后被消耗，另一端的旧 token 失效。
+
+**推荐方案：WSL 通过 symlink 共享 Windows 的 auth.toml**
+
+```bash
+# 1. 先确保 WSL 和 Windows 的 auth.toml 内容一致（都执行过 atomcode login）
+# 2. 备份 WSL 的 auth.toml，创建 symlink 指向 Windows 文件
+cp ~/.atomcode/auth.toml ~/.atomcode/auth.toml.bak
+mv ~/.atomcode/auth.toml ~/.atomcode/auth.toml.bak2
+ln -s /mnt/c/Users/Ko_teiru/.atomcode/auth.toml ~/.atomcode/auth.toml
+```
+
+这样 WSL 和 Windows 的 proxy.js 读写**同一个文件**，refresh 后 token 自动同步。
+
+**局限与处理**：
+- **race condition**：极低概率（~7 天一次，两个进程须在几百毫秒内同时检测到过期）下，两端可能同时用同一个 `refresh_token` 请求刷新，后到的会收到 401。`proxy.js` 内建了失败后返回过期 token 的兜底（服务端可能仍然接受），如果仍然报错，在 WSL 端登录一次即可：`atomcode login`
+- **安全性**：symlink 指向 Windows 文件，WSL 端删除备份后请清理旧文件（`rm ~/.atomcode/auth.toml.bak ~/.atomcode/auth.toml.bak2`），避免残留 token
+- **Windows 开机时序**：WSL 启动时 `/mnt/c` 自动挂载，symlink 通常立即可用。极少数情况下（如 WSL 重启后 Windows 存储服务延迟初始化），访问 `/mnt/c/` 可能短暂失败，等几秒重试即可
+- **权限**：WSL 对 `/mnt/c` 的 `writeFileSync` 会忽略 Unix mode（`0o600`），文件权限为 Windows 默认值，不影响功能
+
 ## AGENTS.md 维护说明
 
 本文档通过研究代码库自动生成。添加新的部署模式、修改认证流程或增加依赖时，请同步更新。
