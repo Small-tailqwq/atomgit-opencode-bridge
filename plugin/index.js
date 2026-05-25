@@ -18,6 +18,8 @@ const KNOWN_MODELS = [
   { id: 'Qwen/Qwen3-VL-8B-Instruct', object: 'model', owned_by: 'atomgit' },
 ];
 
+const REASONING_MODELS = ['deepseek-v4-flash'];
+
 const STATUS_API = 'https://api.gitcode.com/api/v5/coding-plan/status-v2';
 
 let proxyServer = null;
@@ -94,6 +96,29 @@ function checkApiKey(req) {
   return req.headers['x-api-key'] === LOCAL_API_KEY;
 }
 
+function injectReasoningParams(body, headerOverride) {
+  try {
+    const parsed = JSON.parse(body.toString());
+    const model = parsed.model || '';
+    const supportsReasoning = REASONING_MODELS.some(m => model.includes(m));
+    if (!supportsReasoning) return body;
+
+    if (headerOverride === 'none' || headerOverride === 'disabled') return body;
+
+    const effort = headerOverride || parsed.reasoning_effort || 'high';
+
+    const modified = {
+      ...parsed,
+      reasoning_effort: effort,
+      thinking: { type: 'enabled' },
+    };
+
+    return Buffer.from(JSON.stringify(modified));
+  } catch {
+    return body;
+  }
+}
+
 async function fetchUsage() {
   const token = await ensureValidToken();
   const res = await fetch(STATUS_API, {
@@ -132,7 +157,8 @@ function startProxy() {
       const chunks = [];
       req.on('data', c => chunks.push(c));
       req.on('end', async () => {
-        const body = Buffer.concat(chunks);
+        let body = Buffer.concat(chunks);
+        body = injectReasoningParams(body, req.headers['x-reasoning-effort']);
         let token;
         try { token = await ensureValidToken(); }
         catch (e) { res.writeHead(401); res.end(JSON.stringify({ error: e.message })); return; }

@@ -24,6 +24,9 @@ const KNOWN_MODELS = [
   { id: 'Qwen/Qwen3-VL-8B-Instruct', object: 'model', owned_by: 'atomgit' },
 ];
 
+// Models known to support reasoning_effort / thinking
+const REASONING_MODELS = ['deepseek-v4-flash'];
+
 const STATUS_API = 'https://api.gitcode.com/api/v5/coding-plan/status-v2';
 
 // ── TOML parser (minimal, for auth.toml only) ──────────────────────────────
@@ -167,6 +170,34 @@ function checkApiKey(req) {
   return req.headers['x-api-key'] === LOCAL_API_KEY;
 }
 
+// ── Reasoning injection ────────────────────────────────────────────────────
+
+// DeepSeek official docs: thinking always-on by default.
+// reasoning_effort: high|max — low/medium map to high, xhigh maps to max.
+// thinking must be sent as {"thinking": {"type": "enabled"}} with reasoning_effort.
+function injectReasoningParams(body, headerOverride) {
+  try {
+    const parsed = JSON.parse(body.toString());
+    const model = parsed.model || '';
+    const supportsReasoning = REASONING_MODELS.some(m => model.includes(m));
+    if (!supportsReasoning) return body;
+
+    if (headerOverride === 'none' || headerOverride === 'disabled') return body;
+
+    const effort = headerOverride || parsed.reasoning_effort || 'high';
+
+    const modified = {
+      ...parsed,
+      reasoning_effort: effort,
+      thinking: { type: 'enabled' },
+    };
+
+    return Buffer.from(JSON.stringify(modified));
+  } catch {
+    return body;
+  }
+}
+
 // ── HTTP Proxy Logic ───────────────────────────────────────────────────────
 
 async function proxyToUpstream(method, pathname, body, clientRes) {
@@ -280,7 +311,11 @@ const server = http.createServer((req, res) => {
   if (req.url === '/v1/chat/completions' && req.method === 'POST') {
     const chunks = [];
     req.on('data', (c) => chunks.push(c));
-    req.on('end', () => proxyToUpstream('POST', '/v1/chat/completions', Buffer.concat(chunks), res));
+    req.on('end', () => {
+      let body = Buffer.concat(chunks);
+      body = injectReasoningParams(body, req.headers['x-reasoning-effort']);
+      proxyToUpstream('POST', '/v1/chat/completions', body, res);
+    });
     return;
   }
 
